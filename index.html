@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinTrack | Advanced Money Management</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        body {
+            background: #f0f2f5;
+            color: #333;
+        }
+
+        body.dark-mode {
+            background: #1a1a1a;
+            color: #f0f0f0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: #2c3e50;
+            color: white;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .add-transaction {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        input, select, button {
+            padding: 0.8rem;
+            margin: 0.5rem 0;
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        button {
+            background: #27ae60;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #219a52;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        }
+
+        .chart-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        }
+
+        .transaction-history {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        }
+
+        .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .transaction-item .actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .transaction-item .actions button {
+            padding: 0.5rem;
+            background: #3498db;
+            border: none;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .transaction-item .actions button.delete {
+            background: #e74c3c;
+        }
+
+        .income { color: #27ae60; }
+        .expense { color: #c0392b; }
+
+        .filter-buttons {
+            margin-bottom: 1rem;
+        }
+
+        .filter-buttons button {
+            margin-right: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: #3498db;
+            border: none;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .filter-buttons button.active {
+            background: #2980b9;
+        }
+
+        .user-menu {
+            position: relative;
+            display: inline-block;
+        }
+
+        .menu-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background: white;
+            min-width: 160px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            opacity: 0;
+            transform: translateY(-10px);
+            animation: menuFade 0.3s forwards;
+        }
+
+        .menu-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+
+        .menu-item:hover {
+            background: #f8f9fa;
+        }
+
+        .alert {
+            padding: 15px;
+            background: #ffebee;
+            color: #c62828;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .hidden { display: none; }
+
+        @keyframes slideIn {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes menuFade {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>FinTrack</h1>
+            <p>Smart Money Management</p>
+        </div>
+        <div class="user-menu">
+            <button id="userButton">👤 User Menu ▼</button>
+            <div class="menu-content" id="userMenu">
+                <div class="menu-item" onclick="showSettings()">⚙️ Settings</div>
+                <div class="menu-item" onclick="showProfile()">👤 Profile</div>
+                <div class="menu-item" onclick="showHelp()">❓ Help</div>
+                <div class="menu-item" onclick="logout()">🚪 Logout</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="🔍 Search transactions..." onkeyup="searchTransactions()">
+        </div>
+
+        <section class="add-transaction">
+            <h2>Add Transaction</h2>
+            <form id="transactionForm">
+                <div class="form-group">
+                    <input type="text" id="description" placeholder="Description" required>
+                </div>
+                <div class="form-group">
+                    <input type="number" id="amount" placeholder="Amount" required>
+                </div>
+                <div class="form-group">
+                    <select id="type">
+                        <option value="income">Income</option>
+                        <option value="expense">Expense</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <select id="category">
+                        <option value="salary">💰 Salary</option>
+                        <option value="food">🍔 Food</option>
+                        <option value="transport">🚗 Transport</option>
+                        <option value="housing">🏠 Housing</option>
+                        <option value="other">📦 Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="recurring"> 🔄 Recurring Transaction
+                    </label>
+                </div>
+                <button type="submit">Add Transaction</button>
+            </form>
+        </section>
+
+        <div class="summary-cards">
+            <div class="card">
+                <h3>Total Balance</h3>
+                <p id="balance">$0.00</p>
+            </div>
+            <div class="card">
+                <h3>Total Income</h3>
+                <p id="totalIncome">$0.00</p>
+            </div>
+            <div class="card">
+                <h3>Total Expenses</h3>
+                <p id="totalExpense">$0.00</p>
+            </div>
+            <div class="card">
+                <h3>Monthly Budget</h3>
+                <input type="number" id="budget" placeholder="Set Budget" onchange="updateBudget()">
+                <p id="budgetStatus">Budget: $0.00</p>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="financeChart"></canvas>
+        </div>
+
+        <section class="transaction-history">
+            <h2>Transaction History</h2>
+            <div class="filter-buttons">
+                <button onclick="filterTransactions('all')" class="active">All</button>
+                <button onclick="filterTransactions('salary')">💰 Salary</button>
+                <button onclick="filterTransactions('food')">🍔 Food</button>
+                <button onclick="filterTransactions('transport')">🚗 Transport</button>
+                <button onclick="filterTransactions('housing')">🏠 Housing</button>
+                <button onclick="filterTransactions('other')">📦 Other</button>
+            </div>
+            <div id="transactions"></div>
+            <button onclick="exportData()" style="margin-top: 1rem;">Export Data as CSV</button>
+        </section>
+
+        <div id="budgetAlert" class="alert hidden">
+            ⚠️ You've exceeded your monthly budget!
+        </div>
+    </div>
+
+    <script>
+        let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+        let budget = parseFloat(localStorage.getItem('budget')) || 0;
+        let chart = null;
+
+        function init() {
+            updateSummary();
+            renderTransactions();
+            renderChart();
+            document.getElementById('budget').value = budget;
+            updateBudget();
+            document.getElementById('toggleDarkMode').addEventListener('click', toggleDarkMode);
+            document.getElementById('userButton').addEventListener('click', toggleUserMenu);
+        }
+
+        function addTransaction(e) {
+            e.preventDefault();
+            
+            const transaction = {
+                id: Date.now(),
+                description: document.getElementById('description').value,
+                amount: parseFloat(document.getElementById('amount').value),
+                type: document.getElementById('type').value,
+                category: document.getElementById('category').value,
+                recurring: document.getElementById('recurring').checked,
+                date: new Date().toLocaleDateString()
+            };
+
+            transactions.push(transaction);
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+            
+            updateSummary();
+            renderTransactions();
+            renderChart();
+            document.getElementById('transactionForm').reset();
+        }
+
+        function updateSummary() {
+            const balance = transactions.reduce((acc, t) => 
+                t.type === 'income' ? acc + t.amount : acc - t.amount, 0);
+            
+            const totalIncome = transactions
+                .filter(t => t.type === 'income')
+                .reduce((acc, t) => acc + t.amount, 0);
+            
+            const totalExpense = transactions
+                .filter(t => t.type === 'expense')
+                .reduce((acc, t) => acc + t.amount, 0);
+
+            document.getElementById('balance').textContent = `$${balance.toFixed(2)}`;
+            document.getElementById('totalIncome').textContent = `$${totalIncome.toFixed(2)}`;
+            document.getElementById('totalExpense').textContent = `$${totalExpense.toFixed(2)}`;
+
+            checkBudgetAlert(totalExpense);
+        }
+
+        function renderTransactions(filterCategory = 'all', filteredTransactions = transactions) {
+            const container = document.getElementById('transactions');
+            container.innerHTML = '';
+
+            const transactionsToRender = filterCategory === 'all' 
+                ? filteredTransactions 
+                : filteredTransactions.filter(t => t.category === filterCategory);
+
+            transactionsToRender.slice().reverse().forEach(t => {
+                const div = document.createElement('div');
+                div.className = `transaction-item ${t.type}`;
+                div.innerHTML = `
+                    <div>
+                        <h4>${t.description}</h4>
+                        <small>${t.category} • ${t.date}</small>
+                    </div>
+                    <span>${t.type === 'income' ? '+' : '-'}$${t.amount.toFixed(2)}</span>
+                    <div class="actions">
+                        <button onclick="editTransaction(${t.id})">✏️ Edit</button>
+                        <button class="delete" onclick="deleteTransaction(${t.id})">🗑️ Delete</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function editTransaction(id) {
+            const transaction = transactions.find(t => t.id === id);
+            if (!transaction) return;
+
+            document.getElementById('description').value = transaction.description;
+            document.getElementById('amount').value = transaction.amount;
+            document.getElementById('type').value = transaction.type;
+            document.getElementById('category').value = transaction.category;
+            document.getElementById('recurring').checked = transaction.recurring;
+
+            deleteTransaction(id);
+        }
+
+        function deleteTransaction(id) {
+            transactions = transactions.filter(t => t.id !== id);
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+            updateSummary();
+            renderTransactions();
+            renderChart();
+        }
+
+        function filterTransactions(category) {
+            document.querySelectorAll('.filter-buttons button').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`button[onclick="filterTransactions('${category}')"]`).classList.add('active');
+            renderTransactions(category);
+        }
+
+        function updateBudget() {
+            budget = parseFloat(document.getElementById('budget').value) || 0;
+            localStorage.setItem('budget', budget);
+            document.getElementById('budgetStatus').textContent = `Budget: $${budget.toFixed(2)}`;
+        }
+
+        function checkBudgetAlert(totalExpense) {
+            const alert = document.getElementById('budgetAlert');
+            if (budget > 0 && totalExpense > budget) {
+                alert.classList.remove('hidden');
+                alert.style.animation = 'shake 0.5s';
+            } else {
+                alert.classList.add('hidden');
+            }
+        }
+
+        function exportData() {
+            const csv = transactions.map(t => `${t.id},${t.description},${t.amount},${t.type},${t.category},${t.date}`).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'transactions.csv';
+            a.click();
+        }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const button = document.getElementById('toggleDarkMode');
+            button.textContent = document.body.classList.contains('dark-mode') ? '☀️ Light Mode' : '🌙 Dark Mode';
+        }
+
+        function toggleUserMenu() {
+            const menu = document.getElementById('userMenu');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function showSettings() {
+            alert('Settings: Coming Soon!');
+        }
+
+        function showProfile() {
+            alert('Profile: Coming Soon!');
+        }
+
+        function showHelp() {
+            alert('Help: Coming Soon!');
+        }
+
+        function logout() {
+            alert('Logged out successfully!');
+        }
+
+        function searchTransactions() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = transactions.filter(t => 
+                t.description.toLowerCase().includes(searchTerm) ||
+                t.amount.toString().includes(searchTerm)
+            );
+            renderTransactions('all', filtered);
+        }
+
+        document.getElementById('transactionForm').addEventListener('submit', addTransaction);
+        init();
+    </script>
+</body>
+</html>
